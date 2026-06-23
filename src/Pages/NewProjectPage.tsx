@@ -57,7 +57,7 @@ export default function NewProjectPage() {
       
       if (res && res.buildId) {
         // Navigate to the deployment/build details page
-        navigate(`/deployments/${res.buildId}`);
+        navigate(`/deployments/${res.buildId}`, { state: { repoFullName: repo.full_name } });
       } else {
         navigate('/projects');
       }

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useLocation } from 'react-router-dom';
 import { DashboardLayout } from '../components/Layout/DashboardLayout';
 import { Header } from '../components/Layout/Header';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -12,76 +12,19 @@ import {
   Rocket, 
   GitBranch, 
   ExternalLink, 
-  Settings, 
   RefreshCw,
   Globe,
   Clock,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Loader2
 } from 'lucide-react';
+import api from '../lib/api';
 
-const projectData = {
-  id: '1',
-  name: 'my-nextjs-app',
-  repo: 'acme/my-nextjs-app',
-  type: 'frontend',
-  status: 'success' as const,
-  url: 'https://my-nextjs-app.deployhub.dev',
-  branch: 'main',
-  lastDeployed: '2 minutes ago',
-  framework: 'Next.js',
-};
-
-const deployments = [
-  {
-    id: '1',
-    projectName: 'my-nextjs-app',
-    commitHash: 'a1b2c3d',
-    branch: 'main',
-    status: 'success' as const,
-    duration: '45s',
-    timestamp: '2 minutes ago',
-  },
-  {
-    id: '2',
-    projectName: 'my-nextjs-app',
-    commitHash: 'e4f5g6h',
-    branch: 'main',
-    status: 'success' as const,
-    duration: '52s',
-    timestamp: '1 hour ago',
-  },
-  {
-    id: '3',
-    projectName: 'my-nextjs-app',
-    commitHash: 'i7j8k9l',
-    branch: 'feature/auth',
-    status: 'failed' as const,
-    duration: '28s',
-    timestamp: '3 hours ago',
-  },
-  {
-    id: '4',
-    projectName: 'my-nextjs-app',
-    commitHash: 'm0n1o2p',
-    branch: 'main',
-    status: 'success' as const,
-    duration: '48s',
-    timestamp: '1 day ago',
-  },
-];
-
-const sampleLogs = [
-  { timestamp: '12:34:01', message: 'Cloning repository...', type: 'info' as const },
-  { timestamp: '12:34:02', message: 'Installing dependencies...', type: 'info' as const },
-  { timestamp: '12:34:15', message: 'npm WARN deprecated some-package@1.0.0', type: 'warning' as const },
-  { timestamp: '12:34:18', message: 'Running build command: npm run build', type: 'info' as const },
-  { timestamp: '12:34:25', message: '> next build', type: 'info' as const },
-  { timestamp: '12:34:26', message: 'Creating an optimized production build...', type: 'info' as const },
-  { timestamp: '12:34:45', message: 'Compiled successfully', type: 'success' as const },
-  { timestamp: '12:34:46', message: 'Linting and type checking...', type: 'info' as const },
-  { timestamp: '12:34:52', message: 'Deploying to edge network...', type: 'info' as const },
-  { timestamp: '12:34:58', message: 'Deployment complete!', type: 'success' as const },
-];
+interface LogLine {
+  timestamp: string;
+  message: string;
+  type: 'info' | 'success' | 'error' | 'warning';
+}
 
 const envVariables = [
   { id: '1', key: 'DATABASE_URL', value: 'postgresql://...', isSecret: true },
@@ -91,11 +34,119 @@ const envVariables = [
 
 export default function ProjectDetailsPage() {
   const { id } = useParams();
-  const [activeTab, setActiveTab] = useState('deployments');
+  const location = useLocation();
+  const repoFullName = location.state?.repoFullName || 'unknown/repo';
+  
+  const [activeTab, setActiveTab] = useState('logs');
+  const [logs, setLogs] = useState<LogLine[]>([]);
+  const [isStreaming, setIsStreaming] = useState(true);
+  const [status, setStatus] = useState<'building' | 'success' | 'failed'>('building');
+  
+  const [deployments, setDeployments] = useState<any[]>([]);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [liveUrl, setLiveUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    // 1. Set up SSE connection
+    if (!id) return;
+
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    const token = localStorage.getItem('auth_token') || '';
+    // Use query parameter for token since EventSource doesn't support custom headers and cross-origin cookies may be blocked
+    const eventSource = new EventSource(`${API_URL}/builds/${id}/logs?token=${token}`, { withCredentials: true });
+
+    eventSource.onmessage = (event) => {
+      const data = event.data;
+      
+      if (data === '--- BUILD SUCCESS ---' || data === '--- BUILD FAILED ---') {
+        setIsStreaming(false);
+        const finalStatus = data === '--- BUILD SUCCESS ---' ? 'success' : 'failed';
+        setStatus(finalStatus);
+        eventSource.close();
+        
+        if (finalStatus === 'success') {
+          // Wait briefly for the backend's automated webhook deployment to settle in DB
+          setTimeout(() => {
+            api.deploy.list().then(deployData => {
+              setDeployments(deployData || []);
+              const myDeploys = deployData?.filter((d: any) => d.repo === repoFullName) || [];
+              if (myDeploys.length > 0) {
+                setLiveUrl(`https://${myDeploys[myDeploys.length - 1].subdomain}.deployhub.dev`);
+                setActiveTab('deployments'); // Switch to deployments tab automatically
+              }
+            }).catch(console.error);
+          }, 3000);
+        }
+        return;
+      }
+
+      setLogs(prev => [...prev, {
+        timestamp: new Date().toLocaleTimeString(),
+        message: data,
+        type: data.toLowerCase().includes('error') ? 'error' : 'info'
+      }]);
+    };
+
+    eventSource.onerror = (err) => {
+      console.error('SSE Error:', err);
+      eventSource.close();
+      setIsStreaming(false);
+      setStatus('failed');
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [id, repoFullName]);
+
+  // Fetch deployments to show in the table
+  useEffect(() => {
+    api.deploy.list().then(data => {
+      setDeployments(data || []);
+      // If we have deployments, maybe find the live url
+      const myDeploys = data?.filter((d: any) => d.repo === repoFullName) || [];
+      if (myDeploys.length > 0) {
+        setLiveUrl(`https://${myDeploys[myDeploys.length - 1].subdomain}.deployhub.dev`);
+      }
+    }).catch(console.error);
+  }, [repoFullName]);
+
+  const handleAutoDeploy = async (repo: string) => {
+    setIsDeploying(true);
+    try {
+      const randomStr = Math.random().toString(36).substring(2, 6);
+      const safeName = repo.split('/').pop()?.replace(/[^a-z0-9-]/gi, '').toLowerCase() || 'app';
+      const subdomain = `${safeName}-${randomStr}`;
+      
+      const res = await api.deploy.create({
+        image: `ghcr.io/${repo.toLowerCase()}:latest`,
+        subdomain,
+        repo
+      });
+      
+      if (res && res.deployment) {
+        setDeployments(prev => [res.deployment, ...prev]);
+        setLiveUrl(`https://${res.deployment.subdomain}.deployhub.dev`);
+        setActiveTab('deployments'); // switch to deployments tab
+      }
+    } catch (err) {
+      console.error('Failed to auto-deploy', err);
+    } finally {
+      setIsDeploying(false);
+    }
+  };
+
+  const handleManualDeploy = () => {
+    if (repoFullName !== 'unknown/repo') {
+      handleAutoDeploy(repoFullName);
+    } else {
+      alert("Repository name is missing. Please initiate a new project.");
+    }
+  };
 
   return (
     <DashboardLayout>
-      <Header title={projectData.name} />
+      <Header title={repoFullName.split('/').pop() || 'Project Details'} />
 
       <div className="p-6 space-y-6 animate-fade-in">
         {/* Project Header Card */}
@@ -107,40 +158,49 @@ export default function ProjectDetailsPage() {
               </div>
               <div>
                 <div className="flex items-center gap-3 mb-1">
-                  <h2 className="text-xl font-semibold text-foreground">{projectData.name}</h2>
-                  <StatusBadge status={projectData.status} />
+                  <h2 className="text-xl font-semibold text-foreground">
+                    {repoFullName.split('/').pop() || 'Loading...'}
+                  </h2>
+                  <StatusBadge status={status} />
                 </div>
                 <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <GitBranch className="w-4 h-4" />
-                    {projectData.repo}
+                    {repoFullName}
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Clock className="w-4 h-4" />
-                    {projectData.lastDeployed}
+                    Just now
                   </span>
-                  <a 
-                    href={projectData.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-primary hover:underline"
-                  >
-                    <LinkIcon className="w-4 h-4" />
-                    {projectData.url.replace('https://', '')}
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+                  {liveUrl && (
+                    <a 
+                      href={liveUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-primary hover:underline"
+                    >
+                      <LinkIcon className="w-4 h-4" />
+                      {liveUrl.replace('https://', '')}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <Button variant="outline" className='"border-white/10 text-white hover:border-[#06f8d8]/50 hover:bg-[#06f8d8] hover:text-black p-5 mt-4'>
+              <Button variant="outline" className='"border-white/10 text-white hover:border-[#06f8d8]/50 hover:bg-[#06f8d8] hover:text-black p-5 mt-4'
+                onClick={handleManualDeploy} disabled={isDeploying || status === 'building'}>
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Redeploy
               </Button>
-              <Button className="flex-1 w-full mt-4 p-5 bg-[#06f8d8] text-background hover:bg-[#06f8d8]/80 font-medium cursor-pointer">
-                <Rocket className="w-4 h-4 mr-2" />
-                Deploy Now
+              <Button 
+                onClick={handleManualDeploy}
+                disabled={isDeploying || status === 'building'}
+                className="flex-1 w-full mt-4 p-5 bg-[#06f8d8] text-background hover:bg-[#06f8d8]/80 font-medium cursor-pointer"
+              >
+                {isDeploying ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Rocket className="w-4 h-4 mr-2" />}
+                {isDeploying ? 'Deploying...' : 'Deploy Now'}
               </Button>
             </div>
           </div>
@@ -149,18 +209,18 @@ export default function ProjectDetailsPage() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-[#242c6f] border border-border">
-            <TabsTrigger value="deployments">Deployments</TabsTrigger>
             <TabsTrigger value="logs">Logs</TabsTrigger>
+            <TabsTrigger value="deployments">Deployments</TabsTrigger>
             <TabsTrigger value="environment">Environment</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="deployments" className="mt-6">
-            <DeploymentTable deployments={deployments} showProject={false} />
+          <TabsContent value="logs" className="mt-6">
+            <TerminalLogViewer logs={logs} status={status} isStreaming={isStreaming} />
           </TabsContent>
 
-          <TabsContent value="logs" className="mt-6">
-            <TerminalLogViewer logs={sampleLogs} status="success" />
+          <TabsContent value="deployments" className="mt-6">
+            <DeploymentTable deployments={deployments} showProject={false} />
           </TabsContent>
 
           <TabsContent value="environment" className="mt-6">
@@ -174,21 +234,11 @@ export default function ProjectDetailsPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg">
                   <div>
-                    <p className="font-medium text-foreground">Framework</p>
-                    <p className="text-sm text-muted-foreground">Auto-detected framework</p>
-                  </div>
-                  <span className="px-3 py-1 bg-secondary rounded-md font-mono text-sm">
-                    {projectData.framework}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg">
-                  <div>
                     <p className="font-medium text-foreground">Production Branch</p>
                     <p className="text-sm text-muted-foreground">Branch used for production deployments</p>
                   </div>
                   <span className="px-3 py-1 bg-secondary rounded-md font-mono text-sm">
-                    {projectData.branch}
+                    main
                   </span>
                 </div>
 
