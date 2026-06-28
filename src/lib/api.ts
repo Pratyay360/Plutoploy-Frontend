@@ -19,7 +19,7 @@ interface Deployment {
   runtime: string;
 }
 
-const baseURL = import.meta.env.VITE_API_URL;
+const baseURL = process.env.VITE_API_URL;
 
 const buildUrl = (path: string) => `${baseURL}${path}`;
 
