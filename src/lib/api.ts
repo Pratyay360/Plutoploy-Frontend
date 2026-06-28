@@ -88,7 +88,18 @@ const requestJson = async <T>(
     await handleError(response);
   }
 
-  return parseResponseBody(response) as Promise<T>;
+  const contentType = response.headers.get("content-type");
+  if (!contentType?.includes("application/json")) {
+    // A 2xx response that isn't JSON means the request never reached the API
+    // (e.g. the SPA index.html was served because VITE_API_URL is wrong/missing).
+    // Throw so callers log it instead of silently resolving to undefined.
+    throw new ApiError(
+      response.status,
+      `Expected a JSON response (got ${contentType ?? "no content-type"}) for ${path}. Is VITE_API_URL configured?`,
+    );
+  }
+
+  return response.json() as Promise<T>;
 };
 
 const request = {
@@ -116,12 +127,13 @@ interface GitHubRepo {
 }
 
 const getRepos = {
-  list: () => request.get<{ repos: Repo[] }>("/repos").then((res) => res.repos),
+  list: () =>
+    request.get<{ repos: Repo[] }>("/repos").then((res) => res.repos ?? []),
   details: (id: string) => request.get<Repo>(`/repos/${id}`),
   github: () =>
     request
       .get<{ repos: GitHubRepo[] }>("/github/repos")
-      .then((res) => res.repos),
+      .then((res) => res.repos ?? []),
 };
 
 const deploy = {
@@ -135,7 +147,7 @@ const deploy = {
   list: () =>
     request
       .get<{ deployments: Deployment[] }>("/deployments")
-      .then((res) => res.deployments),
+      .then((res) => res.deployments ?? []),
   get: (id: string) =>
     request
       .get<{ deployment: Deployment }>(`/deployments/${id}`)
