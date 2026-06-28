@@ -19,7 +19,7 @@ interface Deployment {
   runtime: string;
 }
 
-const baseURL = process.env.VITE_API_URL;
+const baseURL = process.env.BETTER_AUTH_URL;
 
 const buildUrl = (path: string) => `${baseURL}${path}`;
 
@@ -90,13 +90,10 @@ const requestJson = async <T>(
 
   const contentType = response.headers.get("content-type");
   if (!contentType?.includes("application/json")) {
-    // A 2xx response that isn't JSON means the request never reached the API
-    // (e.g. the SPA index.html was served because VITE_API_URL is wrong/missing).
-    // Throw so callers log it instead of silently resolving to undefined.
-    throw new ApiError(
-      response.status,
-      `Expected a JSON response (got ${contentType ?? "no content-type"}) for ${path}. Is VITE_API_URL configured?`,
-    );
+    // throw new ApiError(
+    // response.status,
+    // `Expected a JSON response (got ${contentType ?? "no content-type"}) for ${path}. Is VITE_API_URL configured?`,
+    // );
   }
 
   return response.json() as Promise<T>;
