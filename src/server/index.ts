@@ -11,8 +11,7 @@ import {
 } from "./utils/db";
 import { fetchUserRepos, getGitHubToken } from "./utils/github";
 
-const app = new Hono();
-
+const app = new Hono().basePath("/api");
 
 app.on(["GET", "POST", "DELETE"], "/auth/*", async (c) => {
   const auth = createAuth();

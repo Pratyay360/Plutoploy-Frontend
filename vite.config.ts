@@ -3,6 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react-swc";
 import honoDevServer from "@hono/vite-dev-server";
+import pages from "@hono/vite-cloudflare-pages";
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -13,6 +14,7 @@ export default defineConfig({
     honoDevServer({
       entry: "src/server/index.ts",
     }),
+    pages(),
   ],
 
   resolve: {

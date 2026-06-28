@@ -19,7 +19,7 @@ interface Deployment {
   runtime: string;
 }
 
-const baseURL = process.env.BETTER_AUTH_URL;
+const baseURL = import.meta.env.VITE_API_URL ?? "/api";
 
 const buildUrl = (path: string) => `${baseURL}${path}`;
 
