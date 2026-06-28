@@ -1,95 +1,23 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import * as schema from "../../auth-schema";
 
-export const initiateGitHubLogin = () => {
-  // Redirect to your backend's GitHub OAuth endpoint
-  window.location.href = `${API_URL}/auth/github`;
-};
+export function createAuth() {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const db = drizzle(pool, { schema });
 
-export const handleGitHubCallback = async () => {
-  // Backend redirects here with ?session_token=<token>
-  const urlParams = new URLSearchParams(window.location.search);
-  const token = urlParams.get('session_token');
-
-  if (token) {
-    localStorage.setItem('auth_token', token);
-    // Clean token from URL bar without triggering a reload
-    window.history.replaceState({}, '', window.location.pathname);
-  }
-
-  // Fetch current user data from your backend
-  try {
-    const user = await getCurrentUser();
-    localStorage.setItem('user', JSON.stringify(user));
-    return { token: token || 'cookie-based', user };
-  } catch (error) {
-    throw new Error('Failed to authenticate with GitHub');
-  }
-};
-
-export const getCurrentUser = async () => {
-  const token = localStorage.getItem('auth_token');
-  
-  const response = await fetch(`${API_URL}/auth/me`, {
-    headers: {
-      ...(token && { 'Authorization': `Bearer ${token}` }),
-      'Content-Type': 'application/json',
+  return betterAuth({
+    database: drizzleAdapter(db, { provider: "pg", schema }),
+    baseURL: process.env.BETTER_AUTH_URL,
+    secret: process.env.BETTER_AUTH_SECRET,
+    socialProviders: {
+      github: {
+        clientId: process.env.GITHUB_CLIENT_ID!,
+        clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+        scope: ["repo", "gist", "read:user", "user:email"],
+      },
     },
-    credentials: 'include', // Include cookies for session-based auth
   });
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch user data');
-  }
-  
-  const data = await response.json();
-  return data.user;
-};
-
-export const logout = async () => {
-  const token = localStorage.getItem('auth_token');
-  
-  try {
-    await fetch(`${API_URL}/auth/logout`, {
-      method: 'POST',
-      headers: {
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-    });
-  } catch (error) {
-    console.error('Logout error:', error);
-  }
-  
-  localStorage.removeItem('auth_token');
-  localStorage.removeItem('user');
-};
-
-export const logoutAll = async () => {
-  const token = localStorage.getItem('auth_token');
-  
-  try {
-    await fetch(`${API_URL}/auth/logout/all`, {
-      method: 'POST',
-      headers: {
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-    });
-  } catch (error) {
-    console.error('Logout all error:', error);
-  }
-  
-  localStorage.removeItem('auth_token');
-  localStorage.removeItem('user');
-};
-
-export const isAuthenticated = () => {
-  return !!localStorage.getItem('auth_token') || !!localStorage.getItem('user');
-};
-
-export const getUser = () => {
-  const user = localStorage.getItem('user');
-  return user ? JSON.parse(user) : null;
-};
+}

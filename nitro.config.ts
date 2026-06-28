@@ -1,0 +1,10 @@
+import { defineNitroConfig } from "nitro/config";
+
+export default defineNitroConfig({
+  preset: "cloudflare-pages",
+  serverDir: "src/server",
+  externals: {
+    inline: [],
+    external: ["turso"],
+  },
+});

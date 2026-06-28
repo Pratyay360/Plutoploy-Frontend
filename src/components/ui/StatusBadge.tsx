@@ -1,7 +1,7 @@
-import { cn } from '../../lib/utils';
-import { CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
+import { CheckCircle2, Clock, Loader2, XCircle } from "lucide-react";
+import { cn } from "../../lib/utils";
 
-export type DeploymentStatus = 'success' | 'building' | 'failed' | 'queued';
+export type DeploymentStatus = "success" | "building" | "failed" | "queued";
 
 interface StatusBadgeProps {
   status: DeploymentStatus;
@@ -9,43 +9,55 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-const statusConfig = {
+const statusConfig: Record<
+  DeploymentStatus,
+  {
+    label: string;
+    icon: typeof CheckCircle2;
+    badgeClass: string;
+    iconClass?: string;
+  }
+> = {
   success: {
-    label: 'Success',
+    label: "Success",
     icon: CheckCircle2,
-    className: 'status-success',
+    badgeClass: "badge-success badge-soft",
   },
   building: {
-    label: 'Building',
+    label: "Building",
     icon: Loader2,
-    className: 'status-warning',
-    iconClassName: 'animate-spin',
+    badgeClass: "badge-warning badge-soft",
+    iconClass: "animate-spin",
   },
   failed: {
-    label: 'Failed',
+    label: "Failed",
     icon: XCircle,
-    className: 'status-error',
+    badgeClass: "badge-error badge-soft",
   },
   queued: {
-    label: 'Queued',
+    label: "Queued",
     icon: Clock,
-    className: 'bg-[#120e5f]/50 text-white/60 border border-[#120e5f]',
+    badgeClass: "badge-info badge-soft",
   },
 };
 
-export function StatusBadge({ status, showIcon = true, className }: StatusBadgeProps) {
+export function StatusBadge({
+  status,
+  showIcon = true,
+  className,
+}: StatusBadgeProps) {
   const config = statusConfig[status];
   const Icon = config.icon;
 
   return (
-    <span className={cn(
-      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-      config.className,
-      className
-    )}>
-      {showIcon && (
-        <Icon className={cn("w-3.5 h-3.5", 'iconClassName' in config && config.iconClassName)} />
+    <span
+      className={cn(
+        "badge badge-sm gap-1 font-medium",
+        config.badgeClass,
+        className,
       )}
+    >
+      {showIcon && <Icon className={cn("w-3 h-3", config.iconClass)} />}
       {config.label}
     </span>
   );

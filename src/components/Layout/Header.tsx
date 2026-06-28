@@ -1,10 +1,6 @@
-import { Bell, Search, User, LogOut } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { getUser, logout } from '../../lib/auth';
-import { useNavigate } from 'react-router-dom';
-
+import { useNavigate } from "@tanstack/react-router";
+import { Bell, LogOut, Search, User } from "lucide-react";
+import { authClient } from "../../lib/auth-client";
 
 interface HeaderProps {
   title: string;
@@ -12,71 +8,100 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle }: HeaderProps) {
-  const user = getUser();
+  const { data: session } = authClient.useSession();
+  const user = session?.user;
   const navigate = useNavigate();
 
   const handleSignout = async () => {
-    await logout();
-    navigate('/');
+    await authClient.signOut();
+    navigate({ to: "/" });
   };
 
   return (
-    <header className=" flex items-center justify-between h-16 px-6 border-b border-white/20 bg-background/50 backdrop-blur-xl sticky top-0 z-10">
+    <header className="flex items-center justify-between h-14 px-6 border-b border-base-300/60 bg-base-100/80 backdrop-blur-sm sticky top-0 z-30">
       <div>
-        <h1 className="text-xl font-semibold text-white">{title}</h1>
-        {subtitle && <p className="text-sm text-white/60">{subtitle}</p>}
+        <h1 className="text-sm font-semibold tracking-tight">{title}</h1>
+        {subtitle && (
+          <p className="text-xs text-base-content/40 mt-0.5">{subtitle}</p>
+        )}
       </div>
 
-      <div className="flex items-center gap-4">
-        {/* Search */}
+      <div className="flex items-center gap-1.5">
         <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
-          <Input
-            placeholder="Search projects..."
-            className="pl-9 w-64 bg-[#0f0c43] border-none focus:ring-0 text-sm text-white/80"
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-base-content/30" />
+          <input
+            type="text"
+            placeholder="Search..."
+            className="input input-sm input-ghost pl-8 w-48 h-8 text-xs bg-base-200/50 border-base-300/50 focus:bg-base-200 focus:border-primary/30 transition-colors"
           />
         </div>
 
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative text-white/60 hover:text-white">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-[#06f8d8] rounded-full" />
-        </Button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-square btn-sm relative text-base-content/40 hover:text-base-content"
+        >
+          <Bell className="w-4 h-4" />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full ring-2 ring-base-100" />
+        </button>
 
-        {/* User Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-white/60 hover:text-white">
-              <div className="w-8 h-8 rounded-full bg-[#0f0c43] flex items-center justify-center overflow-hidden">
-                {user?.avatar_url ? (
-                  <img src={user.avatar_url} alt={user.login} className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-4 h-4" />
+        <div className="dropdown dropdown-end">
+          <button
+            type="button"
+            className="btn btn-ghost btn-square btn-sm text-base-content/40 hover:text-base-content"
+          >
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 border border-base-300 flex items-center justify-center overflow-hidden hover:border-primary/30 transition-colors">
+              {user?.image ? (
+                <img
+                  src={user.image}
+                  alt={user.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-4 h-4" />
+              )}
+            </div>
+          </button>
+          <ul className="dropdown-content menu bg-base-200 border border-base-300 rounded-xl z-50 w-56 p-2 shadow-xl shadow-black/30">
+            <li className="menu-title px-3 py-2">
+              <div className="flex flex-col">
+                <span className="font-semibold text-sm">{user?.name}</span>
+                {user?.email && (
+                  <span className="text-xs text-base-content/40 font-normal">
+                    {user.email}
+                  </span>
                 )}
               </div>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 text-white bg-[#0d0c2b] border-[#2e303a] shadow-lg">
-            <DropdownMenuLabel>
-              <div className="flex flex-col">
-                <span className="font-medium">{user?.name || user?.login || 'My Account'}</span>
-                {user?.email && <span className="text-xs text-white/50">{user.email}</span>}
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-[#2e303a]" />
-            <DropdownMenuItem className="focus:bg-blue-950 focus:text-white cursor-pointer">Profile</DropdownMenuItem>
-            <DropdownMenuItem className="focus:bg-blue-950 focus:text-white cursor-pointer">Billing</DropdownMenuItem>
-            <DropdownMenuItem className="focus:bg-blue-950 focus:text-white cursor-pointer">Team</DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-[#2e303a]" />
-            <DropdownMenuItem 
-              onClick={handleSignout}
-              className="text-red-400 focus:bg-red-950 focus:text-red-300 cursor-pointer"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </li>
+            <div className="divider my-1 h-px" />
+            <li>
+              <button type="button" className="text-sm gap-2.5">
+                <User className="w-3.5 h-3.5" />
+                Profile
+              </button>
+            </li>
+            <li>
+              <button type="button" className="text-sm gap-2.5">
+                Billing
+              </button>
+            </li>
+            <li>
+              <button type="button" className="text-sm gap-2.5">
+                Team
+              </button>
+            </li>
+            <div className="divider my-1 h-px" />
+            <li>
+              <button
+                type="button"
+                onClick={handleSignout}
+                className="text-error text-sm gap-2.5"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Sign out
+              </button>
+            </li>
+          </ul>
+        </div>
       </div>
     </header>
   );

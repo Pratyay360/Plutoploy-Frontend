@@ -1,2 +1,9 @@
 [tools]
+action-validator = "latest"
 betterleaks = "latest"
+biome = "latest"
+bun = "latest"
+cloudflared = "latest"
+codex = "latest"
+node = "latest"
+wrangler = { version = "latest", allow_builds = ["esbuild", "sharp", "workerd"] }

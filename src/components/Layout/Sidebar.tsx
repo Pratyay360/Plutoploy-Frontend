@@ -1,26 +1,24 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  FolderGit2, 
-  Rocket, 
-  KeyRound, 
-  Settings,
-  LogOut,
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import {
   ChevronLeft,
-  Menu
-} from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { useState } from 'react';
-import { Button } from '../ui/button';
-import { logout } from '../../lib/auth';
-
+  FolderGit2,
+  KeyRound,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Rocket,
+  Settings,
+} from "lucide-react";
+import { useState } from "react";
+import { authClient } from "../../lib/auth-client";
+import { cn } from "../../lib/utils";
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-  { icon: FolderGit2, label: 'Projects', path: '/projects' },
-  { icon: Rocket, label: 'Deployments', path: '/deployments' },
-  { icon: KeyRound, label: 'Environment', path: '/environment' },
-  { icon: Settings, label: 'Settings', path: '/settings' },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: FolderGit2, label: "Projects", path: "/projects" },
+  { icon: Rocket, label: "Deployments", path: "/deployments" },
+  { icon: KeyRound, label: "Environment", path: "/environment" },
+  { icon: Settings, label: "Settings", path: "/settings" },
 ];
 
 export function Sidebar() {
@@ -29,67 +27,76 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
   const handleSignout = async () => {
-    await logout();
-    navigate('/');
+    await authClient.signOut();
+    navigate({ to: "/" });
   };
 
   return (
-    <aside 
+    <aside
       className={cn(
-        "fixed top-0 left-0 z-40 flex flex-col h-screen bg-[#070527] border-r border-[#2e303a] transition-all duration-300",
-        collapsed ? "w-16" : "w-64"
+        "fixed top-0 left-0 z-40 flex flex-col h-screen border-r border-base-300/60 bg-base-200/80 backdrop-blur-xl transition-all duration-300",
+        collapsed ? "w-14" : "w-56",
       )}
     >
-      {/* Logo */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-[#2e303a]">
+      <div className="flex items-center justify-between h-14 px-3 border-b border-base-300/60">
         {!collapsed && (
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#06f8d8] flex items-center justify-center">
-              <Rocket className="w-4 h-4" />
+          <Link to="/dashboard" className="flex items-center gap-2.5 group">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow">
+              <Rocket className="w-3.5 h-3.5 text-primary-content" />
             </div>
-            <span className="font-semibold text-white">Plutoploy</span>
+            <span className="text-sm font-bold tracking-tight">Plutoploy</span>
           </Link>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
+        <button
+          type="button"
           onClick={() => setCollapsed(!collapsed)}
-          className="text-white/60 hover:text-white"
+          className="btn btn-ghost btn-xs btn-square text-base-content/40 hover:text-base-content"
         >
-          {collapsed ? <Menu className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </Button>
+          {collapsed ? (
+            <Menu className="w-4 h-4" />
+          ) : (
+            <ChevronLeft className="w-4 h-4" />
+          )}
+        </button>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-1 text-white/80">
+      <ul className="menu p-2 flex-1 gap-0.5">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path || 
-            (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
-          
+          const isActive =
+            location.pathname === item.path ||
+            (item.path !== "/dashboard" &&
+              location.pathname.startsWith(item.path));
+
           return (
-            <Link
+            <li
               key={item.path}
-              to={item.path}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-white/60 transition-all duration-200 hover:bg-blue-950 hover:text-white",
-                isActive && "bg-blue-950 text-white border-l-2 border-[#06f8d8]"
-              )}
+              className={cn(isActive && "animate-slide-in-left")}
             >
-              <item.icon className="w-5 h-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
+              <Link
+                to={item.path}
+                className={cn(
+                  "gap-2.5 px-2.5 py-2 text-sm font-medium rounded-lg transition-all duration-150",
+                  isActive
+                    ? "bg-primary/10 text-primary border border-primary/20"
+                    : "text-base-content/50 hover:text-base-content hover:bg-base-300/50 border border-transparent",
+                )}
+              >
+                <item.icon className="w-4 h-4 shrink-0" />
+                {!collapsed && <span>{item.label}</span>}
+              </Link>
+            </li>
           );
         })}
-      </nav>
+      </ul>
 
-      {/* User section */}
-      <div className="p-3 border-t border-[#2e303a]">
-        <button 
+      <div className="p-2 border-t border-base-300/60">
+        <button
+          type="button"
           onClick={handleSignout}
-          className="nav-item w-full justify-start text-white/60 hover:bg-blue-950 hover:text-white rounded-lg flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors"
+          className="btn btn-ghost btn-sm w-full justify-start gap-2.5 text-base-content/40 hover:text-error hover:bg-error/5 transition-colors"
         >
-          <LogOut className="w-5 h-5 shrink-0" />
-          {!collapsed && <span>Sign Out</span>}
+          <LogOut className="w-4 h-4 shrink-0" />
+          {!collapsed && <span>Sign out</span>}
         </button>
       </div>
     </aside>

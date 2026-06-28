@@ -11,7 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
-
+.output
+.tanstack
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +23,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.env
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example

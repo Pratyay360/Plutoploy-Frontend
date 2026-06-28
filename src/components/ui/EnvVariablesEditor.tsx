@@ -1,8 +1,5 @@
-import { useState } from 'react';
-import { Eye, EyeOff, Plus, Trash2, Save } from 'lucide-react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-// import { cn } from '../../lib/utils';
+import { Eye, EyeOff, Lock, Plus, Save, Trash2, Unlock } from "lucide-react";
+import { useState } from "react";
 
 interface EnvVariable {
   id: string;
@@ -16,12 +13,15 @@ interface EnvVariablesEditorProps {
   onSave?: (variables: EnvVariable[]) => void;
 }
 
-export function EnvVariablesEditor({ variables: initialVariables, onSave }: EnvVariablesEditorProps) {
-  const [variables, setVariables] = useState<EnvVariable[]>(initialVariables);
+export function EnvVariablesEditor({
+  variables: initialVariables,
+  onSave,
+}: EnvVariablesEditorProps) {
+  const [variables, setVariables] = useState<EnvVariable[]>(initialVariables ?? []);
   const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
 
   const toggleSecretVisibility = (id: string) => {
-    setVisibleSecrets(prev => {
+    setVisibleSecrets((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
@@ -35,21 +35,25 @@ export function EnvVariablesEditor({ variables: initialVariables, onSave }: EnvV
   const addVariable = () => {
     const newVar: EnvVariable = {
       id: crypto.randomUUID(),
-      key: '',
-      value: '',
+      key: "",
+      value: "",
       isSecret: false,
     };
     setVariables([...variables, newVar]);
   };
 
-  const updateVariable = (id: string, field: 'key' | 'value', value: string) => {
-    setVariables(variables.map(v => 
-      v.id === id ? { ...v, [field]: value } : v
-    ));
+  const updateVariable = (
+    id: string,
+    field: "key" | "value" | "isSecret",
+    value: string | boolean,
+  ) => {
+    setVariables(
+      variables.map((v) => (v.id === id ? { ...v, [field]: value } : v)),
+    );
   };
 
   const removeVariable = (id: string) => {
-    setVariables(variables.filter(v => v.id !== id));
+    setVariables(variables.filter((v) => v.id !== id));
   };
 
   const handleSave = () => {
@@ -57,81 +61,117 @@ export function EnvVariablesEditor({ variables: initialVariables, onSave }: EnvV
   };
 
   return (
-    <div className="bg-[#090b30] backdrop-blur-xl border border-white/10 rounded-lg">
-      <div className="p-4 border-b border-border flex items-center justify-between">
-        <h3 className="font-medium text-white">Environment Variables</h3>
+    <div className="rounded-xl border border-base-300/60 bg-base-200/60 overflow-hidden">
+      <div className="p-4 border-b border-base-300/60 bg-base-200/40 flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Environment Variables</h3>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={addVariable} className='text-white border-white/10 p-5 bg-[#04062b]'>
-            <Plus className="w-4 h-4 mr-1" />
-            Add Variable
-          </Button>
-          <Button size="sm" onClick={handleSave} className='bg-[#06f8d8] text-black p-5'>
-            <Save className="w-4 h-4 mr-1" />
-            Save Changes
-          </Button>
+          <button
+            type="button"
+            onClick={addVariable}
+            className="btn btn-outline btn-xs"
+          >
+            <Plus className="w-3 h-3" />
+            Add
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="btn btn-primary btn-xs"
+          >
+            <Save className="w-3 h-3" />
+            Save
+          </button>
         </div>
       </div>
 
-      <div className="p-4 space-y-3">
-        {/* Header */}
-        <div className="grid grid-cols-[1fr_1fr_auto] gap-4 px-2 text-sm text-white/60">
+      <div className="p-3 space-y-1.5">
+        <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-3 px-2 py-1 text-[11px] text-base-content/30 uppercase tracking-wider font-medium">
           <span>Key</span>
           <span>Value</span>
-          <span className="w-20"></span>
+          <span className="w-8 text-center">Secret</span>
+          <span className="w-8" />
         </div>
 
-        {/* Variables */}
         {variables.map((variable) => (
-          <div 
+          <div
             key={variable.id}
-            className="grid grid-cols-[1fr_1fr_auto] gap-4 items-center p-2 rounded-lg text-white bg-[#0b0c37] hover:bg-[#090b30]/50 transition-colors"
+            className="grid grid-cols-[1fr_1fr_auto_auto] gap-3 items-center p-2 rounded-lg bg-base-100/60 border border-base-300/30 transition-all hover:border-base-300/60 hover:bg-base-100"
           >
-            <Input
+            <input
+              type="text"
               value={variable.key}
-              onChange={(e) => updateVariable(variable.id, 'key', e.target.value)}
+              onChange={(e) =>
+                updateVariable(variable.id, "key", e.target.value)
+              }
               placeholder="VARIABLE_NAME"
-              className="font-mono text-sm p-5 bg-[#090b30] border border-white/10"
+              className="input input-xs font-mono text-xs h-8 bg-transparent border-base-300/50 focus:border-primary/40"
             />
             <div className="relative">
-              <Input
-                type={variable.isSecret && !visibleSecrets.has(variable.id) ? 'password' : 'text'}
+              <input
+                type={
+                  variable.isSecret && !visibleSecrets.has(variable.id)
+                    ? "password"
+                    : "text"
+                }
                 value={variable.value}
-                onChange={(e) => updateVariable(variable.id, 'value', e.target.value)}
+                onChange={(e) =>
+                  updateVariable(variable.id, "value", e.target.value)
+                }
                 placeholder="value"
-                className="font-mono text-sm p-5 bg-[#090b30] border border-white/10 pr-10"
+                className="input input-xs font-mono text-xs h-8 pr-8 bg-transparent border-base-300/50 focus:border-primary/40"
               />
               {variable.isSecret && (
                 <button
+                  type="button"
                   onClick={() => toggleSecretVisibility(variable.id)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-base-content/30 hover:text-base-content transition-colors"
                 >
                   {visibleSecrets.has(variable.id) ? (
-                    <EyeOff className="w-4 h-4" />
+                    <EyeOff className="w-3.5 h-3.5" />
                   ) : (
-                    <Eye className="w-4 h-4" />
+                    <Eye className="w-3.5 h-3.5" />
                   )}
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-2 w-20">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => removeVariable(variable.id)}
-                className="text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
+            <button
+              type="button"
+              onClick={() =>
+                updateVariable(variable.id, "isSecret", !variable.isSecret)
+              }
+              className={`btn btn-ghost btn-square btn-xs transition-colors ${
+                variable.isSecret
+                  ? "text-warning hover:text-warning"
+                  : "text-base-content/30 hover:text-base-content"
+              }`}
+              title={variable.isSecret ? "Mark as visible" : "Mark as secret"}
+            >
+              {variable.isSecret ? (
+                <Lock className="w-3.5 h-3.5" />
+              ) : (
+                <Unlock className="w-3.5 h-3.5" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => removeVariable(variable.id)}
+              className="btn btn-ghost btn-square btn-xs text-base-content/30 hover:text-error hover:bg-error/5"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           </div>
         ))}
 
         {variables.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>No environment variables configured.</p>
-            <Button variant="link" onClick={addVariable} className="mt-2">
+          <div className="text-center py-8 text-sm text-base-content/40">
+            <p>No variables yet.</p>
+            <button
+              type="button"
+              onClick={addVariable}
+              className="btn btn-ghost btn-xs text-primary mt-2"
+            >
               Add your first variable
-            </Button>
+            </button>
           </div>
         )}
       </div>

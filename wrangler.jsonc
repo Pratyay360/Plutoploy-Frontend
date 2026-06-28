@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "plutoploy-frontend",
+  "compatibility_date": "2026-06-23",
+  "observability": {
+    "enabled": true
+  },
+  "compatibility_flags": ["nodejs_compat"]
+  // "kv_namespaces": [
+  //   {
+  //     "binding": "KV_NAMESPACE",
+  //     "id": "kv_placeholder"
+  //   }
+  // ]
+}
