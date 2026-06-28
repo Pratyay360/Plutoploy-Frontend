@@ -17,7 +17,9 @@ export function EnvVariablesEditor({
   variables: initialVariables,
   onSave,
 }: EnvVariablesEditorProps) {
-  const [variables, setVariables] = useState<EnvVariable[]>(initialVariables ?? []);
+  const [variables, setVariables] = useState<EnvVariable[]>(
+    initialVariables ?? [],
+  );
   const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
 
   const toggleSecretVisibility = (id: string) => {

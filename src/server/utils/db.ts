@@ -83,8 +83,7 @@ async function initDB(connectionString: string) {
 
 function getConnectionString() {
   const url = process.env.DATABASE_URL;
-  if (!url)
-    throw new HTTPException(500, { message: "Missing DATABASE_URL" });
+  if (!url) throw new HTTPException(500, { message: "Missing DATABASE_URL" });
   return url;
 }
 

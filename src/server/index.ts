@@ -19,13 +19,13 @@ app.on(["GET", "POST", "DELETE"], "/auth/*", async (c) => {
 });
 
 app.get("/repos", async (c) => {
-  const session = await requireSession(c.req.raw);
+  const _session = await requireSession(c.req.raw);
   const repos = await getReposList();
   return c.json({ repos });
 });
 
 app.get("/repos/:id", async (c) => {
-  const session = await requireSession(c.req.raw);
+  const _session = await requireSession(c.req.raw);
   const id = c.req.param("id");
   if (!id) {
     return c.json({ error: "ID is required" }, 400);
@@ -43,23 +43,28 @@ app.get("/github/repos", async (c) => {
   if (!token) {
     return c.json({ error: "No GitHub account linked" }, 401);
   }
-  const repos = await fetchUserRepos(token);
-  return c.json({
-    repos: repos.map((repo) => ({
-      id: String(repo.id),
-      full_name: repo.full_name,
-      description: repo.description ?? "",
-      html_url: repo.html_url,
-      default_branch: repo.default_branch,
-      private: repo.private,
-      language: repo.language,
-      updated_at: repo.updated_at,
-    })),
-  });
+  try {
+    const repos = await fetchUserRepos(token);
+    return c.json({
+      repos: repos.map((repo) => ({
+        id: String(repo.id),
+        full_name: repo.full_name,
+        description: repo.description ?? "",
+        html_url: repo.html_url,
+        default_branch: repo.default_branch,
+        private: repo.private,
+        language: repo.language,
+        updated_at: repo.updated_at,
+      })),
+    });
+  } catch (err) {
+    console.error("[api] Failed to fetch GitHub repos:", err);
+    return c.json({ error: "Failed to fetch repos from GitHub" }, 502);
+  }
 });
 
 app.post("/deploy", async (c) => {
-  const session = await requireSession(c.req.raw);
+  const _session = await requireSession(c.req.raw);
   const body = await c.req.json<{
     image: string;
     subdomain: string;
@@ -89,13 +94,13 @@ app.post("/deploy", async (c) => {
 });
 
 app.get("/deployments", async (c) => {
-  const session = await requireSession(c.req.raw);
+  const _session = await requireSession(c.req.raw);
   const deployments = await getDeploymentsList();
   return c.json({ deployments });
 });
 
 app.get("/deployments/:id", async (c) => {
-  const session = await requireSession(c.req.raw);
+  const _session = await requireSession(c.req.raw);
   const id = c.req.param("id");
   if (!id) {
     return c.json({ error: "ID is required" }, 400);
@@ -108,7 +113,7 @@ app.get("/deployments/:id", async (c) => {
 });
 
 app.delete("/deployments/:id", async (c) => {
-  const session = await requireSession(c.req.raw);
+  const _session = await requireSession(c.req.raw);
   const id = c.req.param("id");
   if (!id) {
     return c.json({ error: "ID is required" }, 400);
@@ -122,7 +127,7 @@ app.delete("/deployments/:id", async (c) => {
 });
 
 app.post("/inject-workflow", async (c) => {
-  const session = await requireSession(c.req.raw);
+  const _session = await requireSession(c.req.raw);
   const body = await c.req.json<{
     repoFullName: string;
     runtime: string;
@@ -133,14 +138,36 @@ app.post("/inject-workflow", async (c) => {
   }
   const { repoFullName, runtime, branch } = body;
   if (!repoFullName || !runtime || !branch) {
-    return c.json(
-      { error: "Missing repoFullName, runtime, or branch" },
-      400,
-    );
+    return c.json({ error: "Missing repoFullName, runtime, or branch" }, 400);
   }
 
   const buildId = Math.random().toString(36).substring(2, 15);
   return c.json({ buildId });
+});
+
+interface EnvVariable {
+  id: string;
+  key: string;
+  value: string;
+  isSecret: boolean;
+}
+
+const envStore = new Map<string, EnvVariable[]>();
+
+app.get("/env", async (c) => {
+  const session = await requireSession(c.req.raw);
+  const variables = envStore.get(session.user.id) ?? [];
+  return c.json({ variables });
+});
+
+app.put("/env", async (c) => {
+  const session = await requireSession(c.req.raw);
+  const body = await c.req.json<{ variables: EnvVariable[] }>();
+  if (!body?.variables) {
+    return c.json({ error: "Missing variables" }, 400);
+  }
+  envStore.set(session.user.id, body.variables);
+  return c.json({ success: true });
 });
 
 export default app;

@@ -12,6 +12,15 @@ export function createAuth() {
     database: drizzleAdapter(db, { provider: "pg", schema }),
     baseURL: process.env.BETTER_AUTH_URL,
     secret: process.env.BETTER_AUTH_SECRET,
+    account: {
+      fields: {
+        accessToken: "access_token",
+        refreshToken: "refresh_token",
+        idToken: "id_token",
+        accessTokenExpiresAt: "access_token_expires_at",
+        refreshTokenExpiresAt: "refresh_token_expires_at",
+      },
+    },
     socialProviders: {
       github: {
         clientId: process.env.GITHUB_CLIENT_ID!,

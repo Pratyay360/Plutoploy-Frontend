@@ -9,7 +9,6 @@ import {
   Rocket,
   Settings,
 } from "lucide-react";
-import { useState } from "react";
 import { authClient } from "../../lib/auth-client";
 import { cn } from "../../lib/utils";
 
@@ -21,10 +20,14 @@ const navItems = [
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
 
   const handleSignout = async () => {
     await authClient.signOut();
@@ -49,7 +52,7 @@ export function Sidebar() {
         )}
         <button
           type="button"
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={onToggle}
           className="btn btn-ghost btn-xs btn-square text-base-content/40 hover:text-base-content"
         >
           {collapsed ? (

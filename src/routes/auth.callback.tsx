@@ -6,9 +6,10 @@ function AuthCallbackPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    setTimeout(() => {
+    const id = setTimeout(() => {
       navigate({ to: "/dashboard" });
     }, 1000);
+    return () => clearTimeout(id);
   }, [navigate]);
 
   return (

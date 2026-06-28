@@ -35,18 +35,25 @@ function ProjectsPage() {
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [view, setView] = useState<"projects" | "repos">("projects");
+  const [repoError, setRepoError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [deployData, repoData] = await Promise.all([
-          api.deploy.list(),
-          api.getRepos.github().catch(() => [] as GitHubRepo[]),
-        ]);
+        const deployData = await api.deploy.list();
         setDeployments(deployData);
+      } catch (err) {
+        console.error("Failed to fetch deployments", err);
+      }
+
+      try {
+        const repoData = await api.getRepos.github();
         setRepos(repoData);
       } catch (err) {
-        console.error("Failed to fetch data", err);
+        console.error("Failed to fetch GitHub repos", err);
+        setRepoError(
+          err instanceof Error ? err.message : "Failed to load repos",
+        );
       } finally {
         setIsLoading(false);
       }
@@ -282,13 +289,24 @@ function ProjectsPage() {
                   <FolderGit2 className="w-5 h-5 text-base-content/30" />
                 </div>
                 <p className="text-sm font-medium mb-1">
-                  No repositories found
+                  {repoError ? "Failed to load repositories" : "No repositories found"}
                 </p>
                 <p className="text-xs text-base-content/40 mb-4">
-                  {search
-                    ? "Try a different search term"
-                    : "No GitHub repos linked yet"}
+                  {repoError
+                    ? repoError
+                    : search
+                      ? "Try a different search term"
+                      : "No GitHub repos linked yet"}
                 </p>
+                {repoError && (
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="btn btn-outline btn-sm"
+                  >
+                    Retry
+                  </button>
+                )}
               </div>
             )}
           </>

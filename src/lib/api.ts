@@ -88,14 +88,6 @@ const requestJson = async <T>(
     await handleError(response);
   }
 
-  const contentType = response.headers.get("content-type");
-  if (!contentType?.includes("application/json")) {
-    // throw new ApiError(
-    // response.status,
-    // `Expected a JSON response (got ${contentType ?? "no content-type"}) for ${path}. Is VITE_API_URL configured?`,
-    // );
-  }
-
   return response.json() as Promise<T>;
 };
 

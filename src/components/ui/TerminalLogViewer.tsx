@@ -30,7 +30,9 @@ export function TerminalLogViewer({
   }, [logs.length, autoScroll]);
 
   const handleCopy = () => {
-    const text = (logs ?? []).map((l) => `${l.timestamp} ${l.message}`).join("\n");
+    const text = (logs ?? [])
+      .map((l) => `${l.timestamp} ${l.message}`)
+      .join("\n");
     navigator.clipboard.writeText(text);
   };
 

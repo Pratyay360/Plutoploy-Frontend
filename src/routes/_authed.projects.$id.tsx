@@ -12,6 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "../components/Layout/DashboardLayout";
 import { Header } from "../components/Layout/Header";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { DeploymentTable } from "../components/ui/DeploymentTable";
 import { EnvVariablesEditor } from "../components/ui/EnvVariablesEditor";
 import type { DeploymentStatus } from "../components/ui/StatusBadge";
@@ -35,6 +36,9 @@ function ProjectDetailsPage() {
   const navigate = useNavigate();
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -66,7 +70,18 @@ function ProjectDetailsPage() {
     : null;
 
   const handleDelete = async () => {
-    navigate({ to: "/projects" });
+    if (!deployments[0]) return;
+    setIsDeleting(true);
+    try {
+      await Promise.all(
+        deployments.map((d) => api.deploy.delete(d.id)),
+      );
+      setShowDeleteDialog(false);
+      navigate({ to: "/projects" });
+    } catch (err) {
+      console.error("Failed to delete project", err);
+      setIsDeleting(false);
+    }
   };
 
   if (isLoading) {
@@ -149,7 +164,7 @@ function ProjectDetailsPage() {
                 )}
                 <button
                   type="button"
-                  onClick={handleDelete}
+                  onClick={() => setShowDeleteDialog(true)}
                   className="btn btn-ghost btn-square btn-sm text-base-content/30 hover:text-error"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -195,6 +210,17 @@ function ProjectDetailsPage() {
           <EnvVariablesEditor variables={[]} />
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteDialog}
+        title="Delete Project"
+        message={`Are you sure you want to delete ${project.name} and all its deployments? This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+        isLoading={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteDialog(false)}
+      />
     </DashboardLayout>
   );
 }
