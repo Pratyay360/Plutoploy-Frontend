@@ -1,14 +1,14 @@
-import { createError, type H3Event } from "h3";
+import { HTTPException } from "hono/http-exception";
 import { createAuth } from "../../lib/auth";
 import { getPool } from "../../lib/db";
 
-export async function requireSession(event: H3Event) {
+export async function requireSession(req: Request) {
   const auth = createAuth();
   const session = await auth.api.getSession({
-    headers: event.headers,
+    headers: req.headers,
   });
   if (!session) {
-    throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
+    throw new HTTPException(401, { message: "Unauthorized" });
   }
   return session;
 }
@@ -84,10 +84,7 @@ async function initDB(connectionString: string) {
 function getConnectionString() {
   const url = process.env.DATABASE_URL;
   if (!url)
-    throw createError({
-      statusCode: 500,
-      statusMessage: "Missing DATABASE_URL",
-    });
+    throw new HTTPException(500, { message: "Missing DATABASE_URL" });
   return url;
 }
 

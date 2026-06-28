@@ -2,11 +2,18 @@ import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react-swc";
-import { nitro } from "nitro/vite";
+import honoDevServer from "@hono/vite-dev-server";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), TanStackRouterVite(), nitro()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    TanStackRouterVite(),
+    honoDevServer({
+      entry: "src/server/index.ts",
+    }),
+  ],
 
   resolve: {
     alias: {
